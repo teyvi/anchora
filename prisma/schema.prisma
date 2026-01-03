@@ -1,0 +1,58 @@
+ generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+
+}
+
+datasource db {
+  provider = "postgresql"
+ }
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum PostStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String        @id @default(uuid())
+  email         String        @unique
+  passwordHash  String?
+  role          Role
+  passwordSet   Boolean       @default(false)
+  isActive      Boolean       @default(true)
+  posts         Post[]
+  sessions      UserSession[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Post {
+  id              String      @id @default(uuid())
+  title           String
+  content         String
+  status          PostStatus  @default(PENDING)
+  rejectionReason String?
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([userId, status])
+}
+
+model UserSession {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastActivity DateTime
+  isValid      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
