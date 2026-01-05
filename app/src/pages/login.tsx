@@ -39,9 +39,8 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
-      
+<div className="min-h-screen flex items-center justify-center bg-background p-4">
+<div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 pointer-events-none" />      
       <Card className="w-full max-w-md animate-fade-in glass">
         <CardHeader className="space-y-1 text-center">
           <div className="mx-auto mb-4 h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
