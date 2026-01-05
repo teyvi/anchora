@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+import DashboardLayout from '@/layout/dashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +28,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { Search, Eye, AlertTriangle } from 'lucide-react';
-import { Post, mockPosts } from '@/lib/mockData';
+import {  mockPosts, type Post } from '@/lib/mockData';
 
 const ITEMS_PER_PAGE = 5;
 
@@ -61,11 +61,11 @@ const UserPosts = () => {
   const getStatusBadge = (status: Post['status']) => {
     switch (status) {
       case 'approved':
-        return <Badge variant="success">Approved</Badge>;
+        return <Badge variant="secondary" className="bg-green-500 text-white dark:bg-blue-600">Approved</Badge>;
       case 'rejected':
         return <Badge variant="destructive">Rejected</Badge>;
       default:
-        return <Badge variant="pending">Pending</Badge>;
+        return <Badge variant="secondary" className="bg-blue-500 text-white dark:bg-blue-600">Pending</Badge>;
     }
   };
 
