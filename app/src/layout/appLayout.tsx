@@ -1,6 +1,7 @@
  import {  Routes, Route, Navigate } from "react-router-dom";
 import Index from "@/pages";
 import Login from "@/pages/login";
+import SetPassword from "@/pages/setPassword";
 import AdminDashboard from "@/pages/admin/adminDashboard";
 import AdminUsers from "@/pages/admin/adminUsers";
 import AdminPosts from "@/pages/admin/adminPosts";
@@ -13,7 +14,15 @@ import { useAuth } from "@/context/authContext";
 
 // Protected route wrapper
 const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.ReactNode; requireAdmin?: boolean }) => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
   
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -35,6 +44,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/set-password" element={<SetPassword />} />
       
       {/* Admin Routes */}
       <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />

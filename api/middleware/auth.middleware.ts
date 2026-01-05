@@ -30,10 +30,21 @@ export default async function authMiddleware(
       data: { lastActivity: new Date() },
     });
 
+    // Get email from payload or fetch from database if not present
+    let email = payload.email;
+    if (!email) {
+      const user = await prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: { email: true },
+      });
+      email = user?.email;
+    }
+
     //Issue refreshed tokens
     const refreshToken = jwt.sign(
       {
         userId: payload.userId,
+        email: email,
         role: payload.role,
         sessionId: session.id,
       },

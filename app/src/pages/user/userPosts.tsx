@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import DashboardLayout from '@/layout/dashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -27,24 +28,28 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { Search, Eye, AlertTriangle } from 'lucide-react';
-import {  mockPosts, type Post } from '@/lib/mockData';
+import { Search, Eye, AlertTriangle, Loader2 } from 'lucide-react';
+import { postsAPI } from '@/lib/api';
+import type { Post } from '@/lib/types';
 
 const ITEMS_PER_PAGE = 5;
 
 const UserPosts = () => {
-  // Filter posts for the current user (demo: john's posts)
-  const [posts] = useState<Post[]>(mockPosts.filter(p => p.authorId === '2'));
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
 
+  // Fetch user's posts
+  const { data: posts = [], isLoading, error } = useQuery({
+    queryKey: ['myPosts', statusFilter !== 'all' ? statusFilter : undefined],
+    queryFn: () => postsAPI.getMyPosts(statusFilter !== 'all' ? statusFilter : undefined),
+  });
+
   const filteredPosts = posts.filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || post.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    return matchesSearch;
   });
 
   const totalPages = Math.ceil(filteredPosts.length / ITEMS_PER_PAGE);
@@ -60,9 +65,9 @@ const UserPosts = () => {
 
   const getStatusBadge = (status: Post['status']) => {
     switch (status) {
-      case 'approved':
+      case 'APPROVED':
         return <Badge variant="secondary" className="bg-green-500 text-white dark:bg-blue-600">Approved</Badge>;
-      case 'rejected':
+      case 'REJECTED':
         return <Badge variant="destructive">Rejected</Badge>;
       default:
         return <Badge variant="secondary" className="bg-blue-500 text-white dark:bg-blue-600">Pending</Badge>;
@@ -91,9 +96,9 @@ const UserPosts = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="PENDING">Pending</SelectItem>
+                    <SelectItem value="APPROVED">Approved</SelectItem>
+                    <SelectItem value="REJECTED">Rejected</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="relative">
@@ -112,36 +117,46 @@ const UserPosts = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {paginatedPosts.map((post) => (
-                <div 
-                  key={post.id} 
-                  className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors animate-fade-in"
-                >
-                  <div className="flex-1 min-w-0 mr-4">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="font-medium truncate">{post.title}</h3>
-                      {getStatusBadge(post.status)}
-                    </div>
-                    <p className="text-sm text-muted-foreground truncate">{post.content}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Created: {post.createdAt}</p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleViewPost(post)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-
-            {filteredPosts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No posts found matching your criteria.
+            {isLoading ? (
+              <div className="flex justify-center items-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
-            ) : totalPages > 1 && (
+            ) : error ? (
+              <div className="text-center py-8 text-destructive">
+                Failed to load posts. Please try again.
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  {paginatedPosts.map((post) => (
+                    <div 
+                      key={post.id} 
+                      className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors animate-fade-in"
+                    >
+                      <div className="flex-1 min-w-0 mr-4">
+                        <div className="flex items-center gap-3 mb-1">
+                          <h3 className="font-medium truncate">{post.title}</h3>
+                          {getStatusBadge(post.status)}
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">{post.content}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Created: {new Date(post.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleViewPost(post)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+
+                {filteredPosts.length === 0 && !isLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No posts found matching your criteria.
+                  </div>
+                ) : totalPages > 1 && (
               <div className="mt-6">
                 <Pagination>
                   <PaginationContent>
@@ -172,6 +187,8 @@ const UserPosts = () => {
                 </Pagination>
               </div>
             )}
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -185,13 +202,13 @@ const UserPosts = () => {
               {selectedPost && getStatusBadge(selectedPost.status)}
             </DialogTitle>
             <DialogDescription>
-              Created on {selectedPost?.createdAt}
+              Created on {selectedPost ? new Date(selectedPost.createdAt).toLocaleDateString() : ''}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <p className="text-foreground">{selectedPost?.content}</p>
             
-            {selectedPost?.status === 'rejected' && selectedPost.rejectionReason && (
+            {selectedPost?.status === 'REJECTED' && selectedPost.rejectionReason && (
               <div className="mt-4 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
                 <div className="flex items-center gap-2 text-destructive mb-2">
                   <AlertTriangle className="h-4 w-4" />

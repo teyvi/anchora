@@ -9,7 +9,8 @@ import { Router } from "express";
 
  import { 
   createPost, 
-  getMyPosts, 
+  getMyPosts,
+  getAllPosts, 
   approvePost, 
   rejectPost 
 } from "../controllers/posts.controller";
@@ -22,7 +23,6 @@ const router = Router();
  // PUBLIC ROUTES (No authentication required)
 router.post('/login', login);
 
- 
 // AUTHENTICATED USER ROUTES
  router.post('/set-password', setPassword);
 
@@ -37,6 +37,7 @@ router.get('/admin/users', authMiddleware, requireAdmin, getUsers);
 router.patch('/admin/users/:id/deactivate', authMiddleware, requireAdmin, deactivateUser);
 
 // Post Management
+router.get('/admin/posts', authMiddleware, requireAdmin, getAllPosts);
 router.patch('/admin/posts/:id/approve', authMiddleware, requireAdmin, approvePost);
 router.patch('/admin/posts/:id/reject', authMiddleware, requireAdmin, rejectPost);
 

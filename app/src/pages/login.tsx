@@ -20,21 +20,22 @@ const Login = () => {
     setError('');
     setIsLoading(true);
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    const result = login(email, password);
-    setIsLoading(false);
-
-    if (result.success) {
-      // Check if admin or user and redirect accordingly
-      if (email === 'admin@example.com') {
-        navigate('/admin');
-      } else {
+    try {
+      const result = await login(email, password);
+      
+      if (result.success) {
+        // Redirect based on role (will be available in context after login)
         navigate('/dashboard');
+      } else if (result.requiresPasswordSetup) {
+        // Redirect to set password page
+        navigate(`/set-password?email=${encodeURIComponent(email)}`);
+      } else {
+        setError(result.error || 'Login failed');
       }
-    } else {
-      setError(result.error || 'Login failed');
+    } catch (error) {
+      setError('An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -97,19 +98,6 @@ const Login = () => {
               )}
             </Button>
           </form>
-
-          <div className="mt-6 p-4 rounded-lg bg-muted/50 text-sm">
-            <p className="font-medium text-foreground mb-2">Demo Credentials:</p>
-            <p className="text-muted-foreground">
-              Admin: <span className="text-foreground font-mono">admin@example.com</span>
-            </p>
-            <p className="text-muted-foreground">
-              User: <span className="text-foreground font-mono">john@example.com</span>
-            </p>
-            <p className="text-muted-foreground mt-1">
-              Password: <span className="text-foreground font-mono">any 6+ chars</span>
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>
