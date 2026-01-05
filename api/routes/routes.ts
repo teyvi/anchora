@@ -24,7 +24,7 @@ router.post('/login', login);
 
  
 // AUTHENTICATED USER ROUTES
- router.post('/set-password', authMiddleware, setPassword);
+ router.post('/set-password', setPassword);
 
 // User Posts
 router.post('/posts', authMiddleware, createPost);
@@ -33,14 +33,8 @@ router.get('/posts/my-posts', authMiddleware, getMyPosts);
  // ADMIN ROUTES (Authentication + Admin role)
 // User Management
 router.post('/admin/users', authMiddleware, requireAdmin, createUser);
-router.get('/admin/users', authMiddleware, requireAdmin, async (req, res) => {
-  const users = await getUsers();
-  res.json(users);
-});
-router.patch('/admin/users/:id/deactivate', authMiddleware, requireAdmin, async (req, res) => {
-  const user = await deactivateUser(req.params.id);
-  res.json(user);
-});
+router.get('/admin/users', authMiddleware, requireAdmin, getUsers);
+router.patch('/admin/users/:id/deactivate', authMiddleware, requireAdmin, deactivateUser);
 
 // Post Management
 router.patch('/admin/posts/:id/approve', authMiddleware, requireAdmin, approvePost);
