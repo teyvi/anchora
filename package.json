@@ -1,0 +1,16 @@
+{
+    "name": "anchora-root",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+      "start": "concurrently \"npm run dev:api\" \"npm run dev:app\"",
+      "dev:api": "cd api && npm run dev",
+      "dev:app": "cd app && npm run dev",
+      "seed": "cd api && npm run seed"
+    },
+    "devDependencies": {
+      "concurrently": "^9.2.0"
+    }
+  }
+
+  
