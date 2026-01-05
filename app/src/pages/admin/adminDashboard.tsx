@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
  import { Users, FileText, Clock, CheckCircle } from 'lucide-react';
 import { mockUsers, mockPosts } from '@/lib/mockData';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+import DashboardLayout from '@/layout/dashboardLayout';
 
 const AdminDashboard = () => {
   const pendingUsers = mockUsers.filter(u => u.status === 'pending').length;
