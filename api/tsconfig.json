@@ -4,8 +4,6 @@
     "moduleResolution": "node",
     "target": "ES2023",
     "strict": true,
-    "type": "module",
-    "esModuleInterop": true,
-    "ignoreDeprecations": "6.0",
-  }
+     "esModuleInterop": true,
+   }
 }
