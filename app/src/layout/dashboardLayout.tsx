@@ -117,15 +117,15 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <div className="flex items-center gap-3 px-3 py-2">
               <div className="h-10 w-10 rounded-full bg-sidebar-accent flex items-center justify-center">
                 <span className="text-sidebar-accent-foreground font-medium">
-                  {user?.name.charAt(0)}
+                  {user?.email?.charAt(0).toUpperCase()}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-sidebar-foreground truncate">
-                  {user?.name}
+                  {user?.email}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">
-                  {user?.email}
+                  {user?.role}
                 </p>
               </div>
             </div>

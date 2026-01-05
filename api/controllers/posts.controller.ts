@@ -18,11 +18,15 @@ export const getPagination = (query: any) => {
 export const createPost = async (req: Request, res: Response) => {
   const { title, content } = req.body
 
+  if (!req.user?.userId) {
+    return res.status(401).json({ message: 'Unauthorized' })
+  }
+
   const post = await prisma.post.create({
     data: {
       title,
       content,
-      userId: req.user?.userId
+      userId: req.user.userId
     }
   })
 
@@ -35,7 +39,7 @@ export const getMyPosts = async (req: Request, res: Response) => {
   const posts = await prisma.post.findMany({
     where: {
       userId: req.user?.userId,
-      ...(req.query.status && { status: req.query.status })
+      ...(req.query.status && { status: req.query.status as any })
     },
     skip,
     take,
@@ -43,6 +47,33 @@ export const getMyPosts = async (req: Request, res: Response) => {
   })
 
   res.json(posts)
+}
+
+// Admin get all posts
+export const getAllPosts = async (req: Request, res: Response) => {
+  const { skip, take } = getPagination(req.query)
+
+  const posts = await prisma.post.findMany({
+    where: {
+      ...(req.query.status && { status: req.query.status as any })
+    },
+    skip,
+    take,
+    orderBy: { createdAt: 'desc' }
+  })
+
+  // Fetch authors separately to avoid include issues
+  const postsWithAuthors = await Promise.all(
+    posts.map(async (post) => {
+      const author = await prisma.user.findUnique({
+        where: { id: post.userId },
+        select: { id: true, email: true }
+      })
+      return { ...post, author }
+    })
+  )
+
+  res.json(postsWithAuthors)
 }
 //admin post approval
 export const approvePost = async (req: Request, res: Response) => {

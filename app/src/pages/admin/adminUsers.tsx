@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/layout/dashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,38 +23,64 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { UserPlus, Search, AlertCircle } from 'lucide-react';
-import { mockUsers, type User } from '@/lib/mockData';
+import { UserPlus, Search, AlertCircle, Loader2 } from 'lucide-react';
+import { usersAPI } from '@/lib/api';
+import type { User } from '@/lib/types';
 import { toast } from 'sonner';
 
 const AdminUsers = () => {
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
-  const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserRole, setNewUserRole] = useState<'USER' | 'ADMIN'>('USER');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [errors, setErrors] = useState<{ name?: string; email?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string }>({});
 
-  const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  // Fetch users
+  const { data: users = [], isLoading, error } = useQuery({
+    queryKey: ['users'],
+    queryFn: usersAPI.getAll,
+  });
+
+  // Create user mutation
+  const createUserMutation = useMutation({
+    mutationFn: ({ email, role }: { email: string; role: string }) =>
+      usersAPI.create(email, role),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setNewUserEmail('');
+      setNewUserRole('USER');
+      setDialogOpen(false);
+      toast.success('User created successfully! They will receive a welcome email to set their password.');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create user');
+    },
+  });
+
+  // Deactivate user mutation
+  const deactivateUserMutation = useMutation({
+    mutationFn: (userId: string) => usersAPI.deactivate(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('User deactivated successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to deactivate user');
+    },
+  });
+
+  const filteredUsers = users.filter((user: User) => 
     user.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const validateForm = () => {
-    const newErrors: { name?: string; email?: string } = {};
-    
-    if (!newUserName.trim()) {
-      newErrors.name = 'Name is required';
-    } else if (newUserName.length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
-    }
+    const newErrors: { email?: string } = {};
 
     if (!newUserEmail.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newUserEmail)) {
       newErrors.email = 'Invalid email format';
-    } else if (users.some(u => u.email === newUserEmail)) {
-      newErrors.email = 'Email already exists';
     }
 
     setErrors(newErrors);
@@ -62,21 +89,7 @@ const AdminUsers = () => {
 
   const handleCreateUser = () => {
     if (!validateForm()) return;
-
-    const newUser: User = {
-      id: String(users.length + 1),
-      name: newUserName,
-      email: newUserEmail,
-      role: 'user',
-      status: 'pending',
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-
-    setUsers([...users, newUser]);
-    setNewUserName('');
-    setNewUserEmail('');
-    setDialogOpen(false);
-    toast.success('User created successfully! They will be prompted to set a password on first login.');
+    createUserMutation.mutate({ email: newUserEmail, role: newUserRole });
   };
 
   return (
@@ -99,26 +112,10 @@ const AdminUsers = () => {
               <DialogHeader>
                 <DialogTitle>Create New User</DialogTitle>
                 <DialogDescription>
-                  Add a new user without a password. They will be prompted to create one on first login.
+                  Add a new user. They will receive a welcome email to set their password.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    placeholder="John Doe"
-                    value={newUserName}
-                    onChange={(e) => setNewUserName(e.target.value)}
-                    className={errors.name ? 'border-destructive' : ''}
-                  />
-                  {errors.name && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      {errors.name}
-                    </p>
-                  )}
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -128,6 +125,7 @@ const AdminUsers = () => {
                     value={newUserEmail}
                     onChange={(e) => setNewUserEmail(e.target.value)}
                     className={errors.email ? 'border-destructive' : ''}
+                    disabled={createUserMutation.isPending}
                   />
                   {errors.email && (
                     <p className="text-xs text-destructive flex items-center gap-1">
@@ -136,12 +134,41 @@ const AdminUsers = () => {
                     </p>
                   )}
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <select
+                    id="role"
+                    value={newUserRole}
+                    onChange={(e) => setNewUserRole(e.target.value as 'USER' | 'ADMIN')}
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                    disabled={createUserMutation.isPending}
+                  >
+                    <option value="USER">User</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setDialogOpen(false)}
+                  disabled={createUserMutation.isPending}
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleCreateUser}>Create User</Button>
+                <Button 
+                  onClick={handleCreateUser}
+                  disabled={createUserMutation.isPending}
+                >
+                  {createUserMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create User'
+                  )}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -163,51 +190,82 @@ const AdminUsers = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.map((user) => (
-                    <TableRow key={user.id} className="animate-fade-in">
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                            <span className="text-sm font-medium text-primary">
-                              {user.name.charAt(0)}
-                            </span>
-                          </div>
-                          <span className="font-medium">{user.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{user.email}</TableCell>
-                      <TableCell>
-                        <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                          {user.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={user.status === 'active' ? 'outline' : 'destructive'}>
-                          {user.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{user.createdAt}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            {filteredUsers.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                No users found matching your search.
+            {isLoading ? (
+              <div className="flex justify-center items-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
+            ) : error ? (
+              <div className="text-center py-8 text-destructive">
+                Failed to load users. Please try again.
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Password Set</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredUsers.map((user: User) => (
+                        <TableRow key={user.id} className="animate-fade-in">
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <span className="text-sm font-medium text-primary">
+                                  {user.email.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <span className="font-medium">{user.email}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={user.role === 'ADMIN' ? 'default' : 'secondary'}>
+                              {user.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={user.passwordSet ? 'outline' : 'destructive'}>
+                              {user.passwordSet ? 'Yes' : 'Pending'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={user.isActive ? 'outline' : 'destructive'}>
+                              {user.isActive ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {new Date(user.createdAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            {user.isActive && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deactivateUserMutation.mutate(user.id)}
+                                disabled={deactivateUserMutation.isPending}
+                              >
+                                Deactivate
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {filteredUsers.length === 0 && !isLoading && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No users found matching your search.
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

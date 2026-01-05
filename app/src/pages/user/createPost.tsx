@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from '@/layout/dashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,14 +8,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertCircle, Loader2, Send } from 'lucide-react';
+import { postsAPI } from '@/lib/api';
 import { toast } from 'sonner';
 
 const CreatePost = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ title?: string; content?: string }>({});
+
+  const createPostMutation = useMutation({
+    mutationFn: () => postsAPI.create(title, content),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myPosts'] });
+      toast.success('Post submitted successfully! It will be reviewed by an admin.');
+      navigate('/dashboard/posts');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create post');
+    },
+  });
 
   const validateForm = () => {
     const newErrors: { title?: string; content?: string } = {};
@@ -44,14 +58,7 @@ const CreatePost = () => {
     
     if (!validateForm()) return;
 
-    setIsSubmitting(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setIsSubmitting(false);
-    toast.success('Post submitted successfully! It will be reviewed by an admin.');
-    navigate('/dashboard/posts');
+    createPostMutation.mutate();
   };
 
   return (
@@ -73,7 +80,7 @@ const CreatePost = () => {
                   placeholder="Enter a descriptive title for your post"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  disabled={isSubmitting}
+                  disabled={createPostMutation.isPending}
                   className={errors.title ? 'border-destructive' : ''}
                 />
                 {errors.title && (
@@ -94,7 +101,7 @@ const CreatePost = () => {
                   placeholder="Write your post content here..."
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  disabled={isSubmitting}
+                  disabled={createPostMutation.isPending}
                   rows={10}
                   className={errors.content ? 'border-destructive' : ''}
                 />
@@ -114,12 +121,12 @@ const CreatePost = () => {
                   type="button"
                   variant="outline"
                   onClick={() => navigate('/dashboard/posts')}
-                  disabled={isSubmitting}
+                  disabled={createPostMutation.isPending}
                 >
                   Cancel
                 </Button>
-                <Button type="submit" className="glow-primary" disabled={isSubmitting}>
-                  {isSubmitting ? (
+                <Button type="submit" className="glow-primary" disabled={createPostMutation.isPending}>
+                  {createPostMutation.isPending ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Submitting...

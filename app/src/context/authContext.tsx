@@ -1,51 +1,88 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
-import { mockUsers, type User } from '@/lib/mockData';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { authAPI, apiClient } from '@/lib/api';
+
+interface AuthUser {
+  email: string;
+  role: string;
+}
 
 interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => { success: boolean; error?: string };
+  user: AuthUser | null;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; requiresPasswordSetup?: boolean }>;
   logout: () => void;
   isAdmin: boolean;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const login = (email: string, password: string) => {
-    // Mock validation
-    if (!email || !password) {
-      return { success: false, error: 'Email and password are required' };
+  // Check for existing token on mount
+  useEffect(() => {
+    const token = apiClient.getToken();
+    if (token) {
+      // Parse JWT to get user info (basic decode)
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        // Only restore session if email is present in token
+        if (payload.email && payload.role) {
+          setUser({
+            email: payload.email,
+            role: payload.role,
+          });
+        } else {
+          // Invalid or old token without email, clear it
+          apiClient.setToken(null);
+        }
+      } catch (error) {
+        // Invalid token, clear it
+        apiClient.setToken(null);
+      }
     }
+    setIsLoading(false);
+  }, []);
 
-    const foundUser = mockUsers.find(u => u.email === email);
-    
-    if (!foundUser) {
-      return { success: false, error: 'Invalid email or password' };
+  const login = async (email: string, password: string) => {
+    try {
+      const response = await authAPI.login(email, password);
+      
+      // Check if password setup is required
+      if (response.requiresPasswordSetup) {
+        return { 
+          success: false, 
+          requiresPasswordSetup: true,
+          error: 'Please set up your password first' 
+        };
+      }
+
+      // Store token
+      apiClient.setToken(response.token);
+      
+      // Set user info
+      setUser({
+        email,
+        role: response.role,
+      });
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Invalid credentials';
+      return { success: false, error: message };
     }
-
-    if (foundUser.status === 'pending') {
-      return { success: false, error: 'Please set up your password first' };
-    }
-
-    // Mock password check (in real app, this would be proper auth)
-    if (password.length < 6) {
-      return { success: false, error: 'Invalid email or password' };
-    }
-
-    setUser(foundUser);
-    return { success: true };
   };
 
   const logout = () => {
+    authAPI.logout();
     setUser(null);
   };
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'ADMIN';
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAdmin }}>
+    <AuthContext.Provider value={{ user, login, logout, isAdmin, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
