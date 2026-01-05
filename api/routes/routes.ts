@@ -24,7 +24,7 @@ router.post('/login', login);
 
  
 // AUTHENTICATED USER ROUTES
- router.post('/set-password', authMiddleware, setPassword);
+ router.post('/set-password', setPassword);
 
 // User Posts
 router.post('/posts', authMiddleware, createPost);
