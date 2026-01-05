@@ -150,7 +150,7 @@ export const setPassword = async (req: Request, res: Response) => {
 
 //ADMIN to getUsers
 export const getUsers = async (req: Request, res: Response) => {
-  return prisma.user.findMany({
+  const users = await prisma.user.findMany({
     select: {
       id: true,
       email: true,
@@ -163,14 +163,16 @@ export const getUsers = async (req: Request, res: Response) => {
       createdAt: "desc",
     },
   });
+  res.json(users);
 };
 
 //ADMIN to disable users (a soft delete)
-export const deactivateUser = async (userId: string) => {
-  return prisma.user.update({
-    where: { id: userId },
+export const deactivateUser = async (req: Request, res: Response) => {
+  const user = await prisma.user.update({
+    where: { id: req.params.id },
     data: {
       isActive: false,
     },
   });
+  res.json(user);
 };
