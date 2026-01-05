@@ -9,12 +9,12 @@ interface EmailOptions {
 
 // Create reusable transporter
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
+  host: process.env.EMAIL_HOST,
+  port: Number(process.env.EMAIL_PORT),
   secure: false, // true for 465, false for other ports
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
   },
 })
 
@@ -30,7 +30,7 @@ transporter.verify((error, success) => {
 export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
   try {
     const mailOptions = {
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
       to: options.to,
       subject: options.subject,
       html: options.html,

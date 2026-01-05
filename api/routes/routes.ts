@@ -34,7 +34,7 @@ router.get('/posts/my-posts', authMiddleware, getMyPosts);
 // User Management
 router.post('/admin/users', authMiddleware, requireAdmin, createUser);
 router.get('/admin/users', authMiddleware, requireAdmin, async (req, res) => {
-  const users = await getUsers();
+  const users = await getUsers(req,res);
   res.json(users);
 });
 router.patch('/admin/users/:id/deactivate', authMiddleware, requireAdmin, async (req, res) => {
