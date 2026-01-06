@@ -49,7 +49,7 @@ export default async function authMiddleware(
         sessionId: session.id,
       },
       process.env.JWT_SECRET!,
-      { expiresIn: "10m" }
+      { expiresIn: "5m" }
     );
     res.setHeader("x-refresh-token", refreshToken);
     req.user = payload;
